@@ -17,7 +17,7 @@ const AboutUs = () => {
             Further strengthening professional practice, the Bombay Municipal Corporation, in its meeting held on 27th October 1929, unanimously passed a resolution stating that private dispensaries which dispense medicines after examining patients, and where there is no sale of medical drugs, should be exempted from payment under the Shop Act. This decision acknowledged the unique role of medical establishments and aimed to support ethical medical practice without unnecessary administrative burden.
           </p>
           <p className="text-sm leading-relaxed text-[#2E2A21] sm:text-base">
-            By the year 1913, the total number of registered members of the Bombay Medical Council stood at 1,137, reflecting the growing recognition of the Council’s authority and the expanding medical profession during that period.
+            By the year 1913, Total number of registered members of the Bombay Medical Council stood at 1,137, reflecting the growing recognition of the Council’s authority and the expanding medical profession during that period.
           </p>
 
           <div className="my-2 flex w-full flex-col items-center border-b border-[#D1B25E] bg-[#F3ECD8] p-2">
