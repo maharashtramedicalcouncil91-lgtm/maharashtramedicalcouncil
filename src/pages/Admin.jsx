@@ -552,8 +552,14 @@ const Admin = () => {
               <input type="text" value={doctorForm.name} onChange={(event) => setDoctorForm((prev) => ({ ...prev, name: event.target.value }))} placeholder="Doctor name *" className="rounded-md border border-[#D8D0BF] px-3 py-2.5 text-sm outline-none focus:border-[#886718]" />
               <input type="text" value={doctorForm.fatherName} onChange={(event) => setDoctorForm((prev) => ({ ...prev, fatherName: event.target.value }))} placeholder="Father's name" className="rounded-md border border-[#D8D0BF] px-3 py-2.5 text-sm outline-none focus:border-[#886718]" />
               <input type="text" value={doctorForm.nationality} onChange={(event) => setDoctorForm((prev) => ({ ...prev, nationality: event.target.value }))} placeholder="Nationality" className="rounded-md border border-[#D8D0BF] px-3 py-2.5 text-sm outline-none focus:border-[#886718]" />
-              <input type="date" value={doctorForm.dob} onChange={(event) => setDoctorForm((prev) => ({ ...prev, dob: event.target.value }))} placeholder="Date of birth" className="rounded-md border border-[#D8D0BF] px-3 py-2.5 text-sm outline-none focus:border-[#886718]" />
-              <input type="date" value={doctorForm.validUpto} onChange={(event) => setDoctorForm((prev) => ({ ...prev, validUpto: event.target.value }))} placeholder="Valid upto" className="rounded-md border border-[#D8D0BF] px-3 py-2.5 text-sm outline-none focus:border-[#886718]" />
+              <label className="flex flex-col gap-1 text-xs font-semibold text-[#6D6450]">
+                Date of Birth (DOB)
+                <input type="date" value={doctorForm.dob} onChange={(event) => setDoctorForm((prev) => ({ ...prev, dob: event.target.value }))} className="rounded-md border border-[#D8D0BF] px-3 py-2.5 text-sm font-normal text-[#2E2A21] outline-none focus:border-[#886718]" />
+              </label>
+              <label className="flex flex-col gap-1 text-xs font-semibold text-[#6D6450]">
+                Valid Upto (Expiry Date)
+                <input type="date" value={doctorForm.validUpto} onChange={(event) => setDoctorForm((prev) => ({ ...prev, validUpto: event.target.value }))} className="rounded-md border border-[#D8D0BF] px-3 py-2.5 text-sm font-normal text-[#2E2A21] outline-none focus:border-[#886718]" />
+              </label>
               <input
                 type="text"
                 list="ug-universities"
