@@ -1,0 +1,14 @@
+{
+  "doctors": [
+    {
+      "photo": "https://images.unsplash.com/photo-1537368910025-700350fe46c7?auto=format&fit=crop&w=500&q=80",
+      "registrationId": "MMC-2024-0001",
+      "email": "doctor.demo@mmc.in",
+      "name": "Dr. Asha Kulkarni",
+      "degree": "MBBS, MD",
+      "specialization": "General Medicine",
+      "phone": "9876543210",
+      "practiceAddress": "Mumbai, Maharashtra"
+    }
+  ]
+}
