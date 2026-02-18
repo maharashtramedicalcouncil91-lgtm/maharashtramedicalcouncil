@@ -1,5 +1,6 @@
 import { createServer } from 'node:http'
 import { randomInt } from 'node:crypto'
+import { pathToFileURL } from 'node:url'
 import { loadEnv } from './lib/env.mjs'
 import { getDoctors, setDoctors } from './lib/store.mjs'
 import { hashSecret, signToken, verifySecret, verifyToken } from './lib/security.mjs'
@@ -165,7 +166,7 @@ const verifyAdminConfig = () => {
   return { ok: true }
 }
 
-const server = createServer(async (req, res) => {
+export const requestHandler = async (req, res) => {
   if (!req.url) {
     return sendJson(res, 404, { message: 'Not found' })
   }
@@ -434,8 +435,15 @@ const server = createServer(async (req, res) => {
   } catch (error) {
     return sendJson(res, 500, { message: error.message || 'Internal server error' })
   }
-})
+}
 
-server.listen(PORT, HOST, () => {
-  console.log(`MMC API running on http://${HOST}:${PORT}`)
-})
+export default requestHandler
+
+const isDirectRun = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href
+
+if (isDirectRun) {
+  const server = createServer(requestHandler)
+  server.listen(PORT, HOST, () => {
+    console.log(`MMC API running on http://${HOST}:${PORT}`)
+  })
+}
