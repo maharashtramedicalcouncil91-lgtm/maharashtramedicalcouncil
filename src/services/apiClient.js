@@ -12,18 +12,24 @@ const apiRequest = async (path, options = {}) => {
       ...options,
     })
   } catch {
-    throw new Error('API server is not reachable. Start it with: npm run server')
+    throw new Error(`API request failed for ${API_BASE}${path}. Server is not reachable.`)
   }
 
   let data = {}
+  let rawText = ''
   try {
-    data = await response.json()
+    rawText = await response.text()
+    data = rawText ? JSON.parse(rawText) : {}
   } catch {
     data = {}
   }
 
   if (!response.ok) {
-    throw new Error(data.message || `Request failed (${response.status})`)
+    const plain = String(rawText || '')
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+    throw new Error(data.message || plain || `Request failed (${response.status})`)
   }
 
   return data

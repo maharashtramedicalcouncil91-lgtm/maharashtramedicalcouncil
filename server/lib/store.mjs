@@ -272,9 +272,30 @@ const setDoctorsInSupabase = async (doctors) => {
   }
 }
 
-export const getStorageHealth = () => {
-  if (USE_SUPABASE) {
+const checkSupabaseHealth = async () => {
+  try {
+    await ensureSupabaseReady()
+    await supabaseRequest({
+      path: 'doctors?select=registration_id&limit=1',
+    })
     return { ok: true, mode: 'supabase' }
+  } catch (error) {
+    const rawMessage = error?.message || 'Supabase connectivity check failed.'
+    const message =
+      rawMessage === 'fetch failed'
+        ? 'Unable to reach Supabase. Verify SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, and network access.'
+        : rawMessage
+    return {
+      ok: false,
+      mode: 'supabase',
+      message,
+    }
+  }
+}
+
+export const getStorageHealth = async () => {
+  if (USE_SUPABASE) {
+    return checkSupabaseHealth()
   }
 
   if (process.env.NODE_ENV === 'production') {

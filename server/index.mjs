@@ -131,7 +131,14 @@ const parseCookies = (cookieHeader) => {
       return acc
     }
 
-    acc[key] = decodeURIComponent(rest.join('='))
+    const rawValue = rest.join('=')
+    try {
+      acc[key] = decodeURIComponent(rawValue)
+    } catch {
+      // Some third-party cookies contain invalid percent-encoding.
+      // Keep auth flow resilient by using the raw cookie value instead.
+      acc[key] = rawValue
+    }
     return acc
   }, {})
 }
@@ -190,7 +197,7 @@ export const requestHandler = async (req, res) => {
         return sendJson(res, 503, { ok: false, message: config.message })
       }
 
-      const storage = getStorageHealth()
+      const storage = await getStorageHealth()
       if (!storage.ok) {
         return sendJson(res, 503, { ok: false, message: storage.message, mode: storage.mode })
       }
