@@ -121,6 +121,11 @@ const Admin = () => {
     [noticeBoardJson, leftButtonsJson, rightButtonsJson, infoCardsJson, dataCardsJson],
   )
 
+  const doctorCards = useMemo(
+    () => [...doctors].sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''))),
+    [doctors],
+  )
+
   useEffect(() => {
     setNoticeBoardJson(pretty(siteContent.noticeBoard.board))
     setLeftButtonsJson(pretty(siteContent.noticeBoard.leftButtons))
@@ -509,6 +514,7 @@ const Admin = () => {
             <p className="pb-4 text-xs text-[#6D6450] sm:text-sm">
               These records are used by RMP login API to validate Registration ID + Email before OTP is sent.
             </p>
+            <p className="pb-4 text-xs font-semibold text-[#6D6450] sm:text-sm">Total cards: {doctorCards.length}</p>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <input type="text" value={doctorForm.name} onChange={(event) => setDoctorForm((prev) => ({ ...prev, name: event.target.value }))} placeholder="Doctor name *" className="rounded-md border border-[#D8D0BF] px-3 py-2.5 text-sm outline-none focus:border-[#886718]" />
@@ -570,30 +576,41 @@ const Admin = () => {
               )}
             </div>
 
-            <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
-              {doctors.map((doctor) => (
-                <article key={`${doctor.registrationId}-${doctor.email}`} className="rounded-md border border-[#E6E2D8] bg-white p-3">
-                  <div className="flex items-start gap-3">
-                    <img src={doctor.photo || 'https://via.placeholder.com/90x90.png?text=Doctor'} alt={doctor.name} className="h-20 w-20 rounded-md border border-[#E6E2D8] object-cover" />
-                    <div className="min-w-0 flex-1">
-                      <h3 className="text-sm font-bold text-[#2E2A21] sm:text-base">{doctor.name}</h3>
-                      <p className="text-xs text-[#6D6450] sm:text-sm">{doctor.degree}</p>
-                      <p className="text-xs text-[#6D6450] sm:text-sm">ID: {doctor.registrationId}</p>
-                      {doctor.fatherName && <p className="text-xs text-[#6D6450] sm:text-sm">Father: {doctor.fatherName}</p>}
-                      {doctor.nationality && <p className="text-xs text-[#6D6450] sm:text-sm">Nationality: {doctor.nationality}</p>}
-                      {doctor.dob && <p className="text-xs text-[#6D6450] sm:text-sm">DOB: {doctor.dob}</p>}
-                      {doctor.validUpto && <p className="text-xs text-[#6D6450] sm:text-sm">Valid Upto: {doctor.validUpto}</p>}
-                      {doctor.ugUniversity && <p className="text-xs text-[#6D6450] sm:text-sm">UG: {doctor.ugUniversity}</p>}
-                      {doctor.pgUniversity && <p className="text-xs text-[#6D6450] sm:text-sm">PG: {doctor.pgUniversity}</p>}
-                      <p className="break-all text-xs text-[#6D6450] sm:text-sm">{doctor.email}</p>
+            {doctorCards.length === 0 && (
+              <div className="mt-4 rounded-md border border-[#D8D0BF] bg-white p-3 text-sm text-[#6D6450]">
+                No doctor cards found yet. Add a doctor to generate the first card.
+              </div>
+            )}
+
+            <div className={doctorCards.length > 6 ? 'mt-4 max-h-[980px] overflow-y-auto pr-1' : 'mt-4'}>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+                {doctorCards.map((doctor) => (
+                  <article key={`${doctor.registrationId}-${doctor.email}`} className="rounded-md border border-[#E6E2D8] bg-white p-3">
+                    <div className="flex items-start gap-3">
+                      <img src={doctor.photo || 'https://via.placeholder.com/90x90.png?text=Doctor'} alt={doctor.name} className="h-20 w-20 rounded-md border border-[#E6E2D8] object-cover" />
+                      <div className="min-w-0 flex-1">
+                        <h3 className="text-sm font-bold text-[#2E2A21] sm:text-base">{doctor.name}</h3>
+                        <p className="text-xs text-[#6D6450] sm:text-sm">{doctor.degree}</p>
+                        <p className="text-xs text-[#6D6450] sm:text-sm">ID: {doctor.registrationId}</p>
+                        <p className="break-all text-xs text-[#6D6450] sm:text-sm">Email: {doctor.email}</p>
+                        {doctor.fatherName && <p className="text-xs text-[#6D6450] sm:text-sm">Father: {doctor.fatherName}</p>}
+                        {doctor.nationality && <p className="text-xs text-[#6D6450] sm:text-sm">Nationality: {doctor.nationality}</p>}
+                        {doctor.dob && <p className="text-xs text-[#6D6450] sm:text-sm">DOB: {doctor.dob}</p>}
+                        {doctor.validUpto && <p className="text-xs text-[#6D6450] sm:text-sm">Valid Upto: {doctor.validUpto}</p>}
+                        {doctor.ugUniversity && <p className="text-xs text-[#6D6450] sm:text-sm">UG: {doctor.ugUniversity}</p>}
+                        {doctor.pgUniversity && <p className="text-xs text-[#6D6450] sm:text-sm">PG: {doctor.pgUniversity}</p>}
+                        {doctor.specialization && <p className="text-xs text-[#6D6450] sm:text-sm">Specialization: {doctor.specialization}</p>}
+                        {doctor.phone && <p className="text-xs text-[#6D6450] sm:text-sm">Phone: {doctor.phone}</p>}
+                        {doctor.practiceAddress && <p className="text-xs text-[#6D6450] sm:text-sm">Address: {doctor.practiceAddress}</p>}
+                      </div>
                     </div>
-                  </div>
-                  <div className="mt-3 flex gap-2">
-                    <button type="button" onClick={() => handleDoctorEdit(doctor.registrationId)} className="rounded bg-[#F3ECD8] px-3 py-1.5 text-xs font-semibold text-[#6F5312]">Edit</button>
-                    <button type="button" onClick={() => handleDoctorDelete(doctor.registrationId)} className="rounded bg-[#FFF0F0] px-3 py-1.5 text-xs font-semibold text-[#9A3434]">Delete</button>
-                  </div>
-                </article>
-              ))}
+                    <div className="mt-3 flex gap-2">
+                      <button type="button" onClick={() => handleDoctorEdit(doctor.registrationId)} className="rounded bg-[#F3ECD8] px-3 py-1.5 text-xs font-semibold text-[#6F5312]">Edit</button>
+                      <button type="button" onClick={() => handleDoctorDelete(doctor.registrationId)} className="rounded bg-[#FFF0F0] px-3 py-1.5 text-xs font-semibold text-[#9A3434]">Delete</button>
+                    </div>
+                  </article>
+                ))}
+              </div>
             </div>
           </section>
 

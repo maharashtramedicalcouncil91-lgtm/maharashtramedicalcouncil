@@ -49,6 +49,8 @@ const iconDoctor = (doctor) => ({
 
 const normalize = (value) => String(value || '').trim().toLowerCase()
 const normalizeRegId = (value) => String(value || '').trim().toUpperCase()
+const sortDoctorsByName = (doctors) =>
+  [...doctors].sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), undefined, { sensitivity: 'base' }))
 const nowMs = () => Date.now()
 const genericOtpMessage = 'If your details are valid, an OTP will be sent to your registered email.'
 
@@ -243,7 +245,7 @@ export const requestHandler = async (req, res) => {
 
       if (req.method === 'GET' && url.pathname === '/api/admin/doctors') {
         const doctors = await getDoctors()
-        return sendJson(res, 200, { doctors: doctors.map(iconDoctor) })
+        return sendJson(res, 200, { doctors: sortDoctorsByName(doctors).map(iconDoctor) })
       }
 
       if (req.method === 'POST' && url.pathname === '/api/admin/doctors') {
@@ -263,7 +265,7 @@ export const requestHandler = async (req, res) => {
           return sendJson(res, 409, { message: 'Doctor already exists with this registrationId or email.' })
         }
 
-        const nextDoctors = [...doctors, doctor]
+        const nextDoctors = sortDoctorsByName([...doctors, doctor])
         await setDoctors(nextDoctors)
         return sendJson(res, 201, { doctor, doctors: nextDoctors.map(iconDoctor) })
       }
@@ -300,14 +302,15 @@ export const requestHandler = async (req, res) => {
         }
 
         doctors[index] = nextDoctor
-        await setDoctors(doctors)
-        return sendJson(res, 200, { doctor: nextDoctor, doctors: doctors.map(iconDoctor) })
+        const sortedDoctors = sortDoctorsByName(doctors)
+        await setDoctors(sortedDoctors)
+        return sendJson(res, 200, { doctor: nextDoctor, doctors: sortedDoctors.map(iconDoctor) })
       }
 
       if (req.method === 'DELETE' && url.pathname.startsWith('/api/admin/doctors/')) {
         const registrationId = decodeURIComponent(url.pathname.replace('/api/admin/doctors/', ''))
         const doctors = await getDoctors()
-        const nextDoctors = doctors.filter((item) => normalizeRegId(item.registrationId) !== normalizeRegId(registrationId))
+        const nextDoctors = sortDoctorsByName(doctors.filter((item) => normalizeRegId(item.registrationId) !== normalizeRegId(registrationId)))
 
         if (nextDoctors.length === doctors.length) {
           return sendJson(res, 404, { message: 'Doctor not found.' })
