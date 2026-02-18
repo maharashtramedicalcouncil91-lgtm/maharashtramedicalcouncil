@@ -48,6 +48,11 @@ const buildCustomUpiAppUri = (scheme, { amount, txnNote, txnRef, upiId, payeeNam
   return `${scheme}?${params.toString()}`
 }
 
+const persistReceipt = (nextReceipt, setReceipt) => {
+  setReceipt(nextReceipt)
+  sessionStorage.setItem(RECEIPT_STORAGE_KEY, JSON.stringify(nextReceipt))
+}
+
 const OnlinePayment = () => {
   const { siteContent } = useSiteContent()
   const [registrationId, setRegistrationId] = useState('')
@@ -146,8 +151,7 @@ const OnlinePayment = () => {
       lastUpdated: new Date().toLocaleString('en-IN'),
     }
 
-    setReceipt(receiptData)
-    sessionStorage.setItem(RECEIPT_STORAGE_KEY, JSON.stringify(receiptData))
+    persistReceipt(receiptData, setReceipt)
     setStatus({
       type: 'success',
       message: 'Payment request created. Use UPI app or scan QR to pay, then enter UTR to confirm.',
@@ -173,8 +177,7 @@ const OnlinePayment = () => {
       lastUpdated: new Date().toLocaleString('en-IN'),
     }
 
-    setReceipt(updated)
-    sessionStorage.setItem(RECEIPT_STORAGE_KEY, JSON.stringify(updated))
+    persistReceipt(updated, setReceipt)
     setStatus({ type: 'success', message: 'Payment marked as completed. Receipt updated.' })
   }
 
@@ -184,6 +187,13 @@ const OnlinePayment = () => {
       return
     }
 
+    const next = {
+      ...receipt,
+      mode: 'Any UPI App',
+      status: receipt.status === 'Awaiting Payment' ? 'Payment Initiated' : receipt.status,
+      lastUpdated: new Date().toLocaleString('en-IN'),
+    }
+    persistReceipt(next, setReceipt)
     window.location.href = upiUri
   }
 
@@ -192,6 +202,13 @@ const OnlinePayment = () => {
       setStatus({ type: 'error', message: 'Create payment request first.' })
       return
     }
+    const next = {
+      ...receipt,
+      mode: 'Google Pay',
+      status: receipt.status === 'Awaiting Payment' ? 'Payment Initiated' : receipt.status,
+      lastUpdated: new Date().toLocaleString('en-IN'),
+    }
+    persistReceipt(next, setReceipt)
     window.location.href = gpayUri
   }
 
@@ -200,6 +217,13 @@ const OnlinePayment = () => {
       setStatus({ type: 'error', message: 'Create payment request first.' })
       return
     }
+    const next = {
+      ...receipt,
+      mode: 'PhonePe',
+      status: receipt.status === 'Awaiting Payment' ? 'Payment Initiated' : receipt.status,
+      lastUpdated: new Date().toLocaleString('en-IN'),
+    }
+    persistReceipt(next, setReceipt)
     window.location.href = phonePeUri
   }
 

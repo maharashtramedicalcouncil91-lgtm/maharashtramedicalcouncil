@@ -39,6 +39,7 @@ const iconDoctor = (doctor) => ({
   nationality: doctor.nationality || '',
   dob: doctor.dob || '',
   validUpto: doctor.validUpto || '',
+  idStatus: getValidityStatus(doctor.validUpto),
   ugUniversity: doctor.ugUniversity || '',
   pgUniversity: doctor.pgUniversity || '',
   degree: doctor.degree || '',
@@ -51,6 +52,40 @@ const normalize = (value) => String(value || '').trim().toLowerCase()
 const normalizeRegId = (value) => String(value || '').trim().toUpperCase()
 const sortDoctorsByName = (doctors) =>
   [...doctors].sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), undefined, { sensitivity: 'base' }))
+const parseIsoDate = (value) => {
+  const match = String(value || '').trim().match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (!match) {
+    return null
+  }
+
+  const year = Number(match[1])
+  const month = Number(match[2])
+  const day = Number(match[3])
+  if (!year || month < 1 || month > 12 || day < 1 || day > 31) {
+    return null
+  }
+
+  return { year, month, day }
+}
+
+const endOfDateUtcMs = (value) => {
+  const parsed = parseIsoDate(value)
+  if (!parsed) {
+    return null
+  }
+
+  return Date.UTC(parsed.year, parsed.month - 1, parsed.day, 23, 59, 59, 999)
+}
+
+const isDoctorExpired = (validUpto) => {
+  const expiryMs = endOfDateUtcMs(validUpto)
+  if (expiryMs === null) {
+    return false
+  }
+
+  return expiryMs < Date.now()
+}
+const getValidityStatus = (validUpto) => (isDoctorExpired(validUpto) ? 'expired' : 'active')
 const nowMs = () => Date.now()
 const genericOtpMessage = 'If your details are valid, an OTP will be sent to your registered email.'
 
@@ -362,6 +397,14 @@ export const requestHandler = async (req, res) => {
         })
       }
 
+      if (isDoctorExpired(doctor.validUpto)) {
+        return sendJson(res, 403, {
+          message: `Your registration validity has expired (valid upto: ${doctor.validUpto || 'N/A'}). Please complete renewal to continue login.`,
+          expired: true,
+          validUpto: doctor.validUpto || '',
+        })
+      }
+
       const otp = generateOtp()
       const otpHash = hashSecret(otp)
 
@@ -427,6 +470,14 @@ export const requestHandler = async (req, res) => {
 
       if (!doctor) {
         return sendJson(res, 401, { message: 'Invalid credentials or OTP.' })
+      }
+
+      if (isDoctorExpired(doctor.validUpto)) {
+        return sendJson(res, 403, {
+          message: `Your registration validity has expired (valid upto: ${doctor.validUpto || 'N/A'}). Please complete renewal to continue login.`,
+          expired: true,
+          validUpto: doctor.validUpto || '',
+        })
       }
 
       const key = `${normalizeRegId(registrationId)}|${normalize(email)}`

@@ -43,6 +43,38 @@ const validateDataCards = (value) => {
 const isValidUpiId = (value) => /^[a-zA-Z0-9.\-_]{2,}@[a-zA-Z]{2,}$/i.test(String(value || '').trim())
 const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
 const isValidRegistrationId = (value) => /^[A-Za-z0-9/-]{6,20}$/.test(value)
+const normalizeDateInput = (value) => String(value || '').trim().slice(0, 10)
+const formatDateForDisplay = (value) => {
+  const raw = normalizeDateInput(value)
+  if (!raw || !/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    return raw
+  }
+  const [year, month, day] = raw.split('-')
+  return `${day}-${month}-${year}`
+}
+const normalizeDoctorForForm = (doctor) => {
+  const merged = {
+    photo: '',
+    registrationId: '',
+    email: '',
+    name: '',
+    fatherName: '',
+    nationality: '',
+    dob: '',
+    validUpto: '',
+    ugUniversity: '',
+    pgUniversity: '',
+    degree: '',
+    specialization: '',
+    phone: '',
+    practiceAddress: '',
+    ...doctor,
+  }
+
+  merged.dob = normalizeDateInput(doctor?.dob)
+  merged.validUpto = normalizeDateInput(doctor?.validUpto)
+  return merged
+}
 
 const emptyDoctorForm = {
   photo: '',
@@ -181,7 +213,7 @@ const Admin = () => {
 
   const loadDoctors = async () => {
     const response = await getDoctors()
-    setDoctors((response.doctors || []).map((doctor) => ({ ...emptyDoctorForm, ...doctor })))
+    setDoctors((response.doctors || []).map(normalizeDoctorForForm))
   }
 
   const checkApiAndSession = useCallback(async () => {
@@ -358,13 +390,13 @@ const Admin = () => {
       if (editDoctorRegistrationId) {
         const response = await updateDoctor(editDoctorRegistrationId, payload)
         if (Array.isArray(response?.doctors)) {
-          setDoctors(response.doctors.map((doctor) => ({ ...emptyDoctorForm, ...doctor })))
+          setDoctors(response.doctors.map(normalizeDoctorForForm))
         }
         setStatus({ type: 'success', message: 'Doctor updated successfully.' })
       } else {
         const response = await createDoctor(payload)
         if (Array.isArray(response?.doctors)) {
-          setDoctors(response.doctors.map((doctor) => ({ ...emptyDoctorForm, ...doctor })))
+          setDoctors(response.doctors.map(normalizeDoctorForForm))
         }
         setStatus({ type: 'success', message: 'Doctor added successfully.' })
       }
@@ -382,7 +414,7 @@ const Admin = () => {
       return
     }
 
-    setDoctorForm({ ...emptyDoctorForm, ...doctor })
+    setDoctorForm(normalizeDoctorForForm(doctor))
     setEditDoctorRegistrationId(registrationId)
     setStatus({ type: '', message: '' })
   }
@@ -391,7 +423,7 @@ const Admin = () => {
     try {
       const response = await deleteDoctor(registrationId)
       if (Array.isArray(response?.doctors)) {
-        setDoctors(response.doctors.map((doctor) => ({ ...emptyDoctorForm, ...doctor })))
+        setDoctors(response.doctors.map(normalizeDoctorForForm))
       }
       if (editDoctorRegistrationId === registrationId) {
         setDoctorForm(emptyDoctorForm)
@@ -601,6 +633,9 @@ const Admin = () => {
                         <h3 className="truncate text-sm font-bold text-[#1E1B15]">{doctor.name}</h3>
                         <p className="truncate text-xs font-semibold text-[#6F5312]">{doctor.degree}</p>
                         <p className="pt-1 text-[11px] text-[#514936]"><span className="font-semibold">Reg ID:</span> {doctor.registrationId}</p>
+                        <p className={`mt-1 inline-flex w-fit rounded px-2 py-0.5 text-[10px] font-semibold ${doctor.idStatus === 'expired' ? 'bg-[#FFE5E5] text-[#9A3434]' : 'bg-[#ECF8EF] text-[#2D5C38]'}`}>
+                          {doctor.idStatus === 'expired' ? 'Expired' : 'Active'}
+                        </p>
                         <p className="truncate text-[11px] text-[#514936]"><span className="font-semibold">Email:</span> {doctor.email}</p>
                         {doctor.phone && <p className="text-[11px] text-[#514936]"><span className="font-semibold">Phone:</span> {doctor.phone}</p>}
                         {doctor.nationality && <p className="text-[11px] text-[#514936]"><span className="font-semibold">Nationality:</span> {doctor.nationality}</p>}
@@ -609,8 +644,8 @@ const Admin = () => {
 
                     <div className="grid grid-cols-2 gap-x-3 gap-y-1 border-t border-[#EEE7D9] bg-[#FCFAF4] px-3 py-2 text-[11px] text-[#5B523F]">
                       {doctor.fatherName && <p><span className="font-semibold">Father:</span> {doctor.fatherName}</p>}
-                      {doctor.dob && <p><span className="font-semibold">DOB:</span> {doctor.dob}</p>}
-                      {doctor.validUpto && <p><span className="font-semibold">Valid Upto:</span> {doctor.validUpto}</p>}
+                      {doctor.dob && <p><span className="font-semibold">DOB:</span> {formatDateForDisplay(doctor.dob)}</p>}
+                      {doctor.validUpto && <p><span className="font-semibold">Valid Upto:</span> {formatDateForDisplay(doctor.validUpto)}</p>}
                       {doctor.specialization && <p><span className="font-semibold">Specialization:</span> {doctor.specialization}</p>}
                       {doctor.ugUniversity && <p className="col-span-2"><span className="font-semibold">UG:</span> {doctor.ugUniversity}</p>}
                       {doctor.pgUniversity && <p className="col-span-2"><span className="font-semibold">PG:</span> {doctor.pgUniversity}</p>}
