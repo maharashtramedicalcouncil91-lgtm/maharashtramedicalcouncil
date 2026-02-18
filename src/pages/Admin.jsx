@@ -585,28 +585,53 @@ const Admin = () => {
             <div className={doctorCards.length > 6 ? 'mt-4 max-h-[980px] overflow-y-auto pr-1' : 'mt-4'}>
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
                 {doctorCards.map((doctor) => (
-                  <article key={`${doctor.registrationId}-${doctor.email}`} className="rounded-md border border-[#E6E2D8] bg-white p-3">
-                    <div className="flex items-start gap-3">
-                      <img src={doctor.photo || 'https://via.placeholder.com/90x90.png?text=Doctor'} alt={doctor.name} className="h-20 w-20 rounded-md border border-[#E6E2D8] object-cover" />
+                  <article key={`${doctor.registrationId}-${doctor.email}`} className="overflow-hidden rounded-lg border border-[#CFC6B1] bg-white shadow-sm">
+                    <div className="flex items-center justify-between bg-gradient-to-r from-[#1F2A44] to-[#29406F] px-3 py-2">
+                      <p className="text-[11px] font-semibold tracking-[0.12em] text-white">DOCTOR IDENTITY CARD</p>
+                      <span className="rounded bg-[#E0C57A] px-2 py-0.5 text-[10px] font-bold text-[#2E2A21]">MMC</span>
+                    </div>
+
+                    <div className="flex gap-3 p-3">
+                      <img
+                        src={doctor.photo || 'https://via.placeholder.com/90x110.png?text=Doctor'}
+                        alt={doctor.name}
+                        className="h-28 w-24 rounded border border-[#D8D0BF] object-cover"
+                      />
                       <div className="min-w-0 flex-1">
-                        <h3 className="text-sm font-bold text-[#2E2A21] sm:text-base">{doctor.name}</h3>
-                        <p className="text-xs text-[#6D6450] sm:text-sm">{doctor.degree}</p>
-                        <p className="text-xs text-[#6D6450] sm:text-sm">ID: {doctor.registrationId}</p>
-                        <p className="break-all text-xs text-[#6D6450] sm:text-sm">Email: {doctor.email}</p>
-                        {doctor.fatherName && <p className="text-xs text-[#6D6450] sm:text-sm">Father: {doctor.fatherName}</p>}
-                        {doctor.nationality && <p className="text-xs text-[#6D6450] sm:text-sm">Nationality: {doctor.nationality}</p>}
-                        {doctor.dob && <p className="text-xs text-[#6D6450] sm:text-sm">DOB: {doctor.dob}</p>}
-                        {doctor.validUpto && <p className="text-xs text-[#6D6450] sm:text-sm">Valid Upto: {doctor.validUpto}</p>}
-                        {doctor.ugUniversity && <p className="text-xs text-[#6D6450] sm:text-sm">UG: {doctor.ugUniversity}</p>}
-                        {doctor.pgUniversity && <p className="text-xs text-[#6D6450] sm:text-sm">PG: {doctor.pgUniversity}</p>}
-                        {doctor.specialization && <p className="text-xs text-[#6D6450] sm:text-sm">Specialization: {doctor.specialization}</p>}
-                        {doctor.phone && <p className="text-xs text-[#6D6450] sm:text-sm">Phone: {doctor.phone}</p>}
-                        {doctor.practiceAddress && <p className="text-xs text-[#6D6450] sm:text-sm">Address: {doctor.practiceAddress}</p>}
+                        <h3 className="truncate text-sm font-bold text-[#1E1B15]">{doctor.name}</h3>
+                        <p className="truncate text-xs font-semibold text-[#6F5312]">{doctor.degree}</p>
+                        <p className="pt-1 text-[11px] text-[#514936]"><span className="font-semibold">Reg ID:</span> {doctor.registrationId}</p>
+                        <p className="truncate text-[11px] text-[#514936]"><span className="font-semibold">Email:</span> {doctor.email}</p>
+                        {doctor.phone && <p className="text-[11px] text-[#514936]"><span className="font-semibold">Phone:</span> {doctor.phone}</p>}
+                        {doctor.nationality && <p className="text-[11px] text-[#514936]"><span className="font-semibold">Nationality:</span> {doctor.nationality}</p>}
                       </div>
                     </div>
-                    <div className="mt-3 flex gap-2">
-                      <button type="button" onClick={() => handleDoctorEdit(doctor.registrationId)} className="rounded bg-[#F3ECD8] px-3 py-1.5 text-xs font-semibold text-[#6F5312]">Edit</button>
-                      <button type="button" onClick={() => handleDoctorDelete(doctor.registrationId)} className="rounded bg-[#FFF0F0] px-3 py-1.5 text-xs font-semibold text-[#9A3434]">Delete</button>
+
+                    <div className="grid grid-cols-2 gap-x-3 gap-y-1 border-t border-[#EEE7D9] bg-[#FCFAF4] px-3 py-2 text-[11px] text-[#5B523F]">
+                      {doctor.fatherName && <p><span className="font-semibold">Father:</span> {doctor.fatherName}</p>}
+                      {doctor.dob && <p><span className="font-semibold">DOB:</span> {doctor.dob}</p>}
+                      {doctor.validUpto && <p><span className="font-semibold">Valid Upto:</span> {doctor.validUpto}</p>}
+                      {doctor.specialization && <p><span className="font-semibold">Specialization:</span> {doctor.specialization}</p>}
+                      {doctor.ugUniversity && <p className="col-span-2"><span className="font-semibold">UG:</span> {doctor.ugUniversity}</p>}
+                      {doctor.pgUniversity && <p className="col-span-2"><span className="font-semibold">PG:</span> {doctor.pgUniversity}</p>}
+                      {doctor.practiceAddress && <p className="col-span-2"><span className="font-semibold">Address:</span> {doctor.practiceAddress}</p>}
+                    </div>
+
+                    <div className="flex gap-2 border-t border-[#EEE7D9] px-3 py-2">
+                      <button
+                        type="button"
+                        onClick={() => handleDoctorEdit(doctor.registrationId)}
+                        className="rounded bg-[#F3ECD8] px-3 py-1.5 text-xs font-semibold text-[#6F5312]"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDoctorDelete(doctor.registrationId)}
+                        className="rounded bg-[#FFF0F0] px-3 py-1.5 text-xs font-semibold text-[#9A3434]"
+                      >
+                        Delete
+                      </button>
                     </div>
                   </article>
                 ))}
