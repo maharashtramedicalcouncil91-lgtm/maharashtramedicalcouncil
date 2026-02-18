@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useSiteContent } from '../context/siteContentStore'
+import { indianMedicalColleges } from '../data/indianMedicalColleges'
 import {
   adminLogin,
   adminLogout,
@@ -48,6 +49,12 @@ const emptyDoctorForm = {
   registrationId: '',
   email: '',
   name: '',
+  fatherName: '',
+  nationality: '',
+  dob: '',
+  validUpto: '',
+  ugUniversity: '',
+  pgUniversity: '',
   degree: '',
   specialization: '',
   phone: '',
@@ -169,7 +176,7 @@ const Admin = () => {
 
   const loadDoctors = async () => {
     const response = await getDoctors()
-    setDoctors(response.doctors || [])
+    setDoctors((response.doctors || []).map((doctor) => ({ ...emptyDoctorForm, ...doctor })))
   }
 
   const checkApiAndSession = useCallback(async () => {
@@ -315,6 +322,12 @@ const Admin = () => {
       registrationId: doctorForm.registrationId.trim(),
       email: doctorForm.email.trim().toLowerCase(),
       name: doctorForm.name.trim(),
+      fatherName: doctorForm.fatherName.trim(),
+      nationality: doctorForm.nationality.trim(),
+      dob: doctorForm.dob.trim(),
+      validUpto: doctorForm.validUpto.trim(),
+      ugUniversity: doctorForm.ugUniversity.trim(),
+      pgUniversity: doctorForm.pgUniversity.trim(),
       degree: doctorForm.degree.trim(),
       specialization: doctorForm.specialization.trim(),
       phone: doctorForm.phone.trim(),
@@ -338,16 +351,21 @@ const Admin = () => {
 
     try {
       if (editDoctorRegistrationId) {
-        await updateDoctor(editDoctorRegistrationId, payload)
+        const response = await updateDoctor(editDoctorRegistrationId, payload)
+        if (Array.isArray(response?.doctors)) {
+          setDoctors(response.doctors.map((doctor) => ({ ...emptyDoctorForm, ...doctor })))
+        }
         setStatus({ type: 'success', message: 'Doctor updated successfully.' })
       } else {
-        await createDoctor(payload)
+        const response = await createDoctor(payload)
+        if (Array.isArray(response?.doctors)) {
+          setDoctors(response.doctors.map((doctor) => ({ ...emptyDoctorForm, ...doctor })))
+        }
         setStatus({ type: 'success', message: 'Doctor added successfully.' })
       }
 
       setDoctorForm(emptyDoctorForm)
       setEditDoctorRegistrationId(null)
-      await loadDoctors()
     } catch (error) {
       setStatus({ type: 'error', message: error.message })
     }
@@ -359,15 +377,17 @@ const Admin = () => {
       return
     }
 
-    setDoctorForm(doctor)
+    setDoctorForm({ ...emptyDoctorForm, ...doctor })
     setEditDoctorRegistrationId(registrationId)
     setStatus({ type: '', message: '' })
   }
 
   const handleDoctorDelete = async (registrationId) => {
     try {
-      await deleteDoctor(registrationId)
-      await loadDoctors()
+      const response = await deleteDoctor(registrationId)
+      if (Array.isArray(response?.doctors)) {
+        setDoctors(response.doctors.map((doctor) => ({ ...emptyDoctorForm, ...doctor })))
+      }
       if (editDoctorRegistrationId === registrationId) {
         setDoctorForm(emptyDoctorForm)
         setEditDoctorRegistrationId(null)
@@ -492,9 +512,39 @@ const Admin = () => {
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <input type="text" value={doctorForm.name} onChange={(event) => setDoctorForm((prev) => ({ ...prev, name: event.target.value }))} placeholder="Doctor name *" className="rounded-md border border-[#D8D0BF] px-3 py-2.5 text-sm outline-none focus:border-[#886718]" />
+              <input type="text" value={doctorForm.fatherName} onChange={(event) => setDoctorForm((prev) => ({ ...prev, fatherName: event.target.value }))} placeholder="Father's name" className="rounded-md border border-[#D8D0BF] px-3 py-2.5 text-sm outline-none focus:border-[#886718]" />
+              <input type="text" value={doctorForm.nationality} onChange={(event) => setDoctorForm((prev) => ({ ...prev, nationality: event.target.value }))} placeholder="Nationality" className="rounded-md border border-[#D8D0BF] px-3 py-2.5 text-sm outline-none focus:border-[#886718]" />
+              <input type="date" value={doctorForm.dob} onChange={(event) => setDoctorForm((prev) => ({ ...prev, dob: event.target.value }))} placeholder="Date of birth" className="rounded-md border border-[#D8D0BF] px-3 py-2.5 text-sm outline-none focus:border-[#886718]" />
+              <input type="date" value={doctorForm.validUpto} onChange={(event) => setDoctorForm((prev) => ({ ...prev, validUpto: event.target.value }))} placeholder="Valid upto" className="rounded-md border border-[#D8D0BF] px-3 py-2.5 text-sm outline-none focus:border-[#886718]" />
+              <input
+                type="text"
+                list="ug-universities"
+                value={doctorForm.ugUniversity}
+                onChange={(event) => setDoctorForm((prev) => ({ ...prev, ugUniversity: event.target.value }))}
+                placeholder="UG University / College (India)"
+                className="rounded-md border border-[#D8D0BF] px-3 py-2.5 text-sm outline-none focus:border-[#886718]"
+              />
+              <input
+                type="text"
+                list="pg-universities"
+                value={doctorForm.pgUniversity}
+                onChange={(event) => setDoctorForm((prev) => ({ ...prev, pgUniversity: event.target.value }))}
+                placeholder="PG University / College (India)"
+                className="rounded-md border border-[#D8D0BF] px-3 py-2.5 text-sm outline-none focus:border-[#886718]"
+              />
               <input type="text" value={doctorForm.degree} onChange={(event) => setDoctorForm((prev) => ({ ...prev, degree: event.target.value }))} placeholder="Degree *" className="rounded-md border border-[#D8D0BF] px-3 py-2.5 text-sm outline-none focus:border-[#886718]" />
               <input type="text" value={doctorForm.registrationId} onChange={(event) => setDoctorForm((prev) => ({ ...prev, registrationId: event.target.value }))} placeholder="Registration ID *" className="rounded-md border border-[#D8D0BF] px-3 py-2.5 text-sm outline-none focus:border-[#886718]" />
               <input type="email" value={doctorForm.email} onChange={(event) => setDoctorForm((prev) => ({ ...prev, email: event.target.value }))} placeholder="Registered email *" className="rounded-md border border-[#D8D0BF] px-3 py-2.5 text-sm outline-none focus:border-[#886718]" />
+              <datalist id="ug-universities">
+                {indianMedicalColleges.map((college) => (
+                  <option key={`ug-${college}`} value={college} />
+                ))}
+              </datalist>
+              <datalist id="pg-universities">
+                {indianMedicalColleges.map((college) => (
+                  <option key={`pg-${college}`} value={college} />
+                ))}
+              </datalist>
               <input type="text" value={doctorForm.specialization} onChange={(event) => setDoctorForm((prev) => ({ ...prev, specialization: event.target.value }))} placeholder="Specialization" className="rounded-md border border-[#D8D0BF] px-3 py-2.5 text-sm outline-none focus:border-[#886718]" />
               <input type="text" value={doctorForm.phone} onChange={(event) => setDoctorForm((prev) => ({ ...prev, phone: event.target.value }))} placeholder="Phone" className="rounded-md border border-[#D8D0BF] px-3 py-2.5 text-sm outline-none focus:border-[#886718]" />
               <input type="text" value={doctorForm.practiceAddress} onChange={(event) => setDoctorForm((prev) => ({ ...prev, practiceAddress: event.target.value }))} placeholder="Practice address" className="rounded-md border border-[#D8D0BF] px-3 py-2.5 text-sm outline-none focus:border-[#886718] sm:col-span-2" />
@@ -529,6 +579,12 @@ const Admin = () => {
                       <h3 className="text-sm font-bold text-[#2E2A21] sm:text-base">{doctor.name}</h3>
                       <p className="text-xs text-[#6D6450] sm:text-sm">{doctor.degree}</p>
                       <p className="text-xs text-[#6D6450] sm:text-sm">ID: {doctor.registrationId}</p>
+                      {doctor.fatherName && <p className="text-xs text-[#6D6450] sm:text-sm">Father: {doctor.fatherName}</p>}
+                      {doctor.nationality && <p className="text-xs text-[#6D6450] sm:text-sm">Nationality: {doctor.nationality}</p>}
+                      {doctor.dob && <p className="text-xs text-[#6D6450] sm:text-sm">DOB: {doctor.dob}</p>}
+                      {doctor.validUpto && <p className="text-xs text-[#6D6450] sm:text-sm">Valid Upto: {doctor.validUpto}</p>}
+                      {doctor.ugUniversity && <p className="text-xs text-[#6D6450] sm:text-sm">UG: {doctor.ugUniversity}</p>}
+                      {doctor.pgUniversity && <p className="text-xs text-[#6D6450] sm:text-sm">PG: {doctor.pgUniversity}</p>}
                       <p className="break-all text-xs text-[#6D6450] sm:text-sm">{doctor.email}</p>
                     </div>
                   </div>

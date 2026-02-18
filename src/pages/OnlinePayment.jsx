@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { CreditCard, Printer, ShieldCheck, IndianRupee, QrCode, Smartphone } from 'lucide-react'
 import { useSiteContent } from '../context/siteContentStore'
 
@@ -55,7 +55,17 @@ const OnlinePayment = () => {
   const [selectedFee, setSelectedFee] = useState(feeOptions[0].key)
   const [acceptedTerms, setAcceptedTerms] = useState(false)
   const [status, setStatus] = useState({ type: '', message: '' })
-  const [receipt, setReceipt] = useState(null)
+  const [receipt, setReceipt] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem(RECEIPT_STORAGE_KEY)
+      if (!saved) {
+        return null
+      }
+      return JSON.parse(saved)
+    } catch {
+      return null
+    }
+  })
   const [utrNo, setUtrNo] = useState('')
   const configuredUpiId = (siteContent.paymentSettings?.upiId || DEFAULT_UPI_ID).trim()
   const configuredPayeeName = (siteContent.paymentSettings?.payeeName || DEFAULT_UPI_PAYEE_NAME).trim()
@@ -112,19 +122,6 @@ const OnlinePayment = () => {
       payeeName: configuredPayeeName,
     })
   }, [configuredPayeeName, configuredUpiId, receipt])
-
-  useEffect(() => {
-    try {
-      const saved = sessionStorage.getItem(RECEIPT_STORAGE_KEY)
-      if (!saved) {
-        return
-      }
-      const parsed = JSON.parse(saved)
-      setReceipt(parsed)
-    } catch {
-      setReceipt(null)
-    }
-  }, [])
 
   const handlePayNow = () => {
     if (!canProceed) {

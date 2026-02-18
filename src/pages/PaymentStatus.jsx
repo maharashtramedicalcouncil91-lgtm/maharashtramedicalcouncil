@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 
 const STORAGE_KEY = 'mmc_payment_receipt_latest'
@@ -7,11 +7,10 @@ const normalize = (value) => String(value || '').trim().toLowerCase()
 
 const PaymentStatus = () => {
   const location = useLocation()
-  const [receipt, setReceipt] = useState(null)
 
   const query = useMemo(() => new URLSearchParams(location.search), [location.search])
 
-  useEffect(() => {
+  const receipt = useMemo(() => {
     const statusRaw = query.get('status') || query.get('txnStatus') || query.get('payment_status') || ''
     const txnId = query.get('txnId') || query.get('transaction_id') || query.get('ref') || 'N/A'
     const receiptNo = query.get('receiptNo') || query.get('receipt_no') || ''
@@ -27,12 +26,12 @@ const PaymentStatus = () => {
     try {
       const raw = sessionStorage.getItem(STORAGE_KEY)
       if (!raw) {
-        return
+        return null
       }
 
       const saved = JSON.parse(raw)
       if (receiptNo && saved.receiptNo && saved.receiptNo !== receiptNo) {
-        return
+        return null
       }
 
       const updated = {
@@ -43,9 +42,9 @@ const PaymentStatus = () => {
       }
 
       sessionStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
-      setReceipt(updated)
+      return updated
     } catch {
-      setReceipt(null)
+      return null
     }
   }, [query])
 

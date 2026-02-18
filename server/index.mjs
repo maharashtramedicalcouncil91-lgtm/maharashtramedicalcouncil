@@ -2,7 +2,7 @@ import { createServer } from 'node:http'
 import { randomInt } from 'node:crypto'
 import { pathToFileURL } from 'node:url'
 import { loadEnv } from './lib/env.mjs'
-import { getDoctors, setDoctors } from './lib/store.mjs'
+import { getDoctors, getStorageHealth, setDoctors } from './lib/store.mjs'
 import { hashSecret, signToken, verifySecret, verifyToken } from './lib/security.mjs'
 import { sendOtpEmail } from './lib/mailer.mjs'
 
@@ -35,6 +35,12 @@ const iconDoctor = (doctor) => ({
   registrationId: doctor.registrationId || '',
   email: doctor.email || '',
   name: doctor.name || '',
+  fatherName: doctor.fatherName || '',
+  nationality: doctor.nationality || '',
+  dob: doctor.dob || '',
+  validUpto: doctor.validUpto || '',
+  ugUniversity: doctor.ugUniversity || '',
+  pgUniversity: doctor.pgUniversity || '',
   degree: doctor.degree || '',
   specialization: doctor.specialization || '',
   phone: doctor.phone || '',
@@ -184,6 +190,11 @@ export const requestHandler = async (req, res) => {
         return sendJson(res, 503, { ok: false, message: config.message })
       }
 
+      const storage = getStorageHealth()
+      if (!storage.ok) {
+        return sendJson(res, 503, { ok: false, message: storage.message, mode: storage.mode })
+      }
+
       return sendJson(res, 200, { ok: true })
     }
 
@@ -224,7 +235,8 @@ export const requestHandler = async (req, res) => {
       }
 
       if (req.method === 'GET' && url.pathname === '/api/admin/doctors') {
-        return sendJson(res, 200, { doctors: getDoctors().map(iconDoctor) })
+        const doctors = await getDoctors()
+        return sendJson(res, 200, { doctors: doctors.map(iconDoctor) })
       }
 
       if (req.method === 'POST' && url.pathname === '/api/admin/doctors') {
@@ -235,7 +247,7 @@ export const requestHandler = async (req, res) => {
           return sendJson(res, 400, { message: 'Name, degree, registrationId and email are required.' })
         }
 
-        const doctors = getDoctors()
+        const doctors = await getDoctors()
         const exists = doctors.some(
           (item) => normalizeRegId(item.registrationId) === normalizeRegId(doctor.registrationId) || normalize(item.email) === normalize(doctor.email),
         )
@@ -244,8 +256,9 @@ export const requestHandler = async (req, res) => {
           return sendJson(res, 409, { message: 'Doctor already exists with this registrationId or email.' })
         }
 
-        setDoctors([...doctors, doctor])
-        return sendJson(res, 201, { doctor })
+        const nextDoctors = [...doctors, doctor]
+        await setDoctors(nextDoctors)
+        return sendJson(res, 201, { doctor, doctors: nextDoctors.map(iconDoctor) })
       }
 
       if (req.method === 'PUT' && url.pathname.startsWith('/api/admin/doctors/')) {
@@ -253,7 +266,7 @@ export const requestHandler = async (req, res) => {
         const body = await parseBody(req)
         const nextDoctor = iconDoctor(body)
 
-        const doctors = getDoctors()
+        const doctors = await getDoctors()
         const index = doctors.findIndex((item) => normalizeRegId(item.registrationId) === normalizeRegId(registrationId))
 
         if (index === -1) {
@@ -280,21 +293,21 @@ export const requestHandler = async (req, res) => {
         }
 
         doctors[index] = nextDoctor
-        setDoctors(doctors)
-        return sendJson(res, 200, { doctor: nextDoctor })
+        await setDoctors(doctors)
+        return sendJson(res, 200, { doctor: nextDoctor, doctors: doctors.map(iconDoctor) })
       }
 
       if (req.method === 'DELETE' && url.pathname.startsWith('/api/admin/doctors/')) {
         const registrationId = decodeURIComponent(url.pathname.replace('/api/admin/doctors/', ''))
-        const doctors = getDoctors()
+        const doctors = await getDoctors()
         const nextDoctors = doctors.filter((item) => normalizeRegId(item.registrationId) !== normalizeRegId(registrationId))
 
         if (nextDoctors.length === doctors.length) {
           return sendJson(res, 404, { message: 'Doctor not found.' })
         }
 
-        setDoctors(nextDoctors)
-        return sendJson(res, 200, { success: true })
+        await setDoctors(nextDoctors)
+        return sendJson(res, 200, { success: true, doctors: nextDoctors.map(iconDoctor) })
       }
     }
 
@@ -313,7 +326,7 @@ export const requestHandler = async (req, res) => {
         return sendJson(res, 400, { message: 'registrationId and email are required.' })
       }
 
-      const doctors = getDoctors()
+      const doctors = await getDoctors()
       const doctor = doctors.find(
         (item) => normalizeRegId(item.registrationId) === normalizeRegId(registrationId) && normalize(item.email) === normalize(email),
       )
@@ -354,7 +367,23 @@ export const requestHandler = async (req, res) => {
         toEmail: doctor.email,
         doctorName: doctor.name,
         otp,
+      }).catch((error) => {
+        otpStore.delete(key)
+        const isProd = process.env.NODE_ENV === 'production'
+        return sendJson(
+          res,
+          502,
+          {
+            message: isProd
+              ? 'OTP delivery service is unavailable right now. Please try again later or contact support.'
+              : error.message || 'Email send failed.',
+          },
+        )
       })
+
+      if (!sendResult || res.writableEnded) {
+        return
+      }
 
       return sendJson(res, 200, {
         success: true,
@@ -381,7 +410,7 @@ export const requestHandler = async (req, res) => {
         return sendJson(res, 400, { message: 'registrationId, email and otp are required.' })
       }
 
-      const doctors = getDoctors()
+      const doctors = await getDoctors()
       const doctor = doctors.find(
         (item) => normalizeRegId(item.registrationId) === normalizeRegId(registrationId) && normalize(item.email) === normalize(email),
       )

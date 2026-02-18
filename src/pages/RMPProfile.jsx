@@ -65,7 +65,13 @@ const RMPProfile = () => {
               />
               <div className="grid flex-1 grid-cols-1 gap-2 text-sm text-[#2E2A21] sm:grid-cols-2 sm:gap-3 sm:text-base">
                 <p><strong className="text-[#6D6450]">Name:</strong> {doctor.name}</p>
+                {doctor.fatherName && <p><strong className="text-[#6D6450]">Father Name:</strong> {doctor.fatherName}</p>}
                 <p><strong className="text-[#6D6450]">Registration ID:</strong> {doctor.registrationId}</p>
+                {doctor.nationality && <p><strong className="text-[#6D6450]">Nationality:</strong> {doctor.nationality}</p>}
+                {doctor.dob && <p><strong className="text-[#6D6450]">DOB:</strong> {doctor.dob}</p>}
+                {doctor.validUpto && <p><strong className="text-[#6D6450]">Valid Upto:</strong> {doctor.validUpto}</p>}
+                {doctor.ugUniversity && <p><strong className="text-[#6D6450]">UG University:</strong> {doctor.ugUniversity}</p>}
+                {doctor.pgUniversity && <p><strong className="text-[#6D6450]">PG University:</strong> {doctor.pgUniversity}</p>}
                 <p><strong className="text-[#6D6450]">Degree:</strong> {doctor.degree}</p>
                 <p><strong className="text-[#6D6450]">Email:</strong> {doctor.email}</p>
                 {doctor.specialization && <p><strong className="text-[#6D6450]">Specialization:</strong> {doctor.specialization}</p>}
