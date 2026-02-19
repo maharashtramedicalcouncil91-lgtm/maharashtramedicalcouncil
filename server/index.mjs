@@ -86,6 +86,22 @@ const isDoctorExpired = (validUpto) => {
   return expiryMs < Date.now()
 }
 const getValidityStatus = (validUpto) => (isDoctorExpired(validUpto) ? 'expired' : 'active')
+const formatDateIso = (date) => {
+  const year = date.getUTCFullYear()
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0')
+  const day = String(date.getUTCDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+const nextYearSameDate = (now = new Date()) => {
+  const year = now.getUTCFullYear()
+  const month = now.getUTCMonth()
+  const day = now.getUTCDate()
+
+  const targetYear = year + 1
+  const maxDayInTargetMonth = new Date(Date.UTC(targetYear, month + 1, 0)).getUTCDate()
+  const targetDay = Math.min(day, maxDayInTargetMonth)
+  return new Date(Date.UTC(targetYear, month, targetDay))
+}
 const nowMs = () => Date.now()
 const genericOtpMessage = 'If your details are valid, an OTP will be sent to your registered email.'
 
@@ -518,6 +534,52 @@ export const requestHandler = async (req, res) => {
       return sendJson(res, 200, {
         success: true,
         doctor: iconDoctor(doctor),
+      })
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/rmp/renewal/confirm') {
+      const body = await parseBody(req)
+      const registrationId = String(body.registrationId || '').trim()
+      const email = String(body.email || '').trim().toLowerCase()
+      const feeType = String(body.feeType || '').trim().toLowerCase()
+      const utrNo = String(body.utrNo || '').trim()
+
+      if (!registrationId || !email || !feeType) {
+        return sendJson(res, 400, { message: 'registrationId, email and feeType are required.' })
+      }
+
+      if (!feeType.includes('renewal')) {
+        return sendJson(res, 400, { message: 'Renewal confirmation is allowed only for Renewal Fee payments.' })
+      }
+
+      if (utrNo.length < 8) {
+        return sendJson(res, 400, { message: 'Valid UTR number is required for renewal confirmation.' })
+      }
+
+      const doctors = await getDoctors()
+      const index = doctors.findIndex(
+        (item) =>
+          normalizeRegId(item.registrationId) === normalizeRegId(registrationId) &&
+          normalize(item.email) === normalize(email),
+      )
+
+      if (index === -1) {
+        return sendJson(res, 404, { message: 'Doctor not found for the provided registration ID and email.' })
+      }
+
+      const renewedValidUpto = formatDateIso(nextYearSameDate(new Date()))
+      doctors[index] = {
+        ...doctors[index],
+        validUpto: renewedValidUpto,
+      }
+
+      const sortedDoctors = sortDoctorsByName(doctors)
+      await setDoctors(sortedDoctors)
+
+      return sendJson(res, 200, {
+        success: true,
+        message: `Renewal validated. ID is now active till ${renewedValidUpto}.`,
+        doctor: iconDoctor(doctors[index]),
       })
     }
 

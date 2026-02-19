@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react'
 import { CreditCard, Printer, ShieldCheck, IndianRupee, QrCode, Smartphone } from 'lucide-react'
 import { useSiteContent } from '../context/siteContentStore'
+import { confirmRenewalPayment } from '../services/apiClient'
 
 const RECEIPT_STORAGE_KEY = 'mmc_payment_receipt_latest'
+const DOCTOR_SESSION_KEY = 'mmc_verified_doctor'
 const DEFAULT_UPI_PAYEE_NAME = 'Maharashtra Medical Council'
 const DEFAULT_UPI_ID = 'mmconline@oksbi'
 
@@ -158,7 +160,7 @@ const OnlinePayment = () => {
     })
   }
 
-  const handleConfirmPayment = () => {
+  const handleConfirmPayment = async () => {
     if (!receipt) {
       setStatus({ type: 'error', message: 'Generate payment request first.' })
       return
@@ -178,6 +180,45 @@ const OnlinePayment = () => {
     }
 
     persistReceipt(updated, setReceipt)
+    if (String(updated.feeType || '').toLowerCase().includes('renewal')) {
+      try {
+        const renewalResult = await confirmRenewalPayment({
+          registrationId: updated.registrationId,
+          email: updated.email,
+          feeType: updated.feeType,
+          utrNo: cleanedUtr,
+        })
+
+        try {
+          const rawDoctor = sessionStorage.getItem(DOCTOR_SESSION_KEY)
+          if (rawDoctor) {
+            const currentDoctor = JSON.parse(rawDoctor)
+            const sameDoctor =
+              String(currentDoctor.registrationId || '').trim() === String(updated.registrationId || '').trim() &&
+              String(currentDoctor.email || '').trim().toLowerCase() === String(updated.email || '').trim().toLowerCase()
+
+            if (sameDoctor && renewalResult?.doctor) {
+              sessionStorage.setItem(DOCTOR_SESSION_KEY, JSON.stringify(renewalResult.doctor))
+            }
+          }
+        } catch {
+          // Ignore session update failure without blocking payment confirmation UX.
+        }
+
+        setStatus({
+          type: 'success',
+          message: `Payment marked as completed. Renewal applied successfully. Valid upto: ${renewalResult?.doctor?.validUpto || 'updated'}.`,
+        })
+        return
+      } catch (error) {
+        setStatus({
+          type: 'error',
+          message: `Payment marked as completed, but renewal update failed: ${error.message}`,
+        })
+        return
+      }
+    }
+
     setStatus({ type: 'success', message: 'Payment marked as completed. Receipt updated.' })
   }
 
