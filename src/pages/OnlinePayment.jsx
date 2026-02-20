@@ -8,7 +8,7 @@ const DOCTOR_SESSION_KEY = 'mmc_verified_doctor'
 const DEFAULT_UPI_PAYEE_NAME = 'Maharashtra Medical Council'
 const DEFAULT_UPI_ID = 'mmconline@oksbi'
 
-const renewalFee = { key: 'renewal', label: 'Renewal Fee', amount: 2000 }
+const renewalFee = { key: 'renewal', label: '5 Year Renewal Fee', amount: 25000 }
 
 const formatCurrency = (value) =>
   new Intl.NumberFormat('en-IN', {
@@ -181,8 +181,8 @@ const OnlinePayment = () => {
       return
     }
 
-    if (Number(receipt.amount) !== 2000) {
-      setStatus({ type: 'error', message: 'Renewal can be confirmed only for INR 2000 payment.' })
+    if (Number(receipt.amount) !== 25000) {
+      setStatus({ type: 'error', message: 'Renewal can be confirmed only for INR 25000 payment.' })
       return
     }
 
@@ -326,8 +326,8 @@ const OnlinePayment = () => {
             <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-[#3F3F3F] sm:text-base">
               <li>The request for refund, if found eligible, will be entertained only offline.</li>
               <li>The transaction once done cannot be cancelled online.</li>
-              <li>Transaction above Rs. 2000 is accepted through Internet Banking, Credit Card and mobile banking.</li>
-              <li>Transaction up to Rs. 2000 is accepted through Debit Card, Internet Banking, Credit Card and mobile banking.</li>
+              <li>This page accepts only 5 Year Renewal Fee payments of Rs. 25,000.</li>
+              <li>Payments of any other amount will be rejected and renewal will not be applied.</li>
               <li>Please do not make payment through BHIM UPI.</li>
             </ul>
           </section>

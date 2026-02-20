@@ -26,12 +26,15 @@ const OTP_EXPIRY_SECONDS = 120
 const OTP_COOLDOWN_SECONDS = 30
 const OTP_MAX_VERIFY_ATTEMPTS = 3
 const OTP_LOCKOUT_MINUTES = 5
+const RENEWAL_FEE_AMOUNT = 25000
+const RENEWAL_FEE_LABEL = '5 year renewal fee'
 const ADMIN_LOGIN_WINDOW_MS = 10 * 60 * 1000
 const ADMIN_LOGIN_MAX_ATTEMPTS = 12
 const OTP_DEBUG = process.env.OTP_DEBUG === 'true' && process.env.NODE_ENV !== 'production'
 
 const otpStore = new Map()
 const rateLimitStore = new Map()
+const usedRenewalUtrs = new Map()
 
 const iconDoctor = (doctor) => ({
   photo: doctor.photo || '',
@@ -135,6 +138,15 @@ const checkRateLimit = (key, limit, windowMs) => {
   state.count += 1
   rateLimitStore.set(key, state)
   return { allowed: true, retryAfter: 0 }
+}
+
+const cleanupUsedRenewalUtrs = () => {
+  const now = nowMs()
+  for (const [utrKey, savedAt] of usedRenewalUtrs.entries()) {
+    if (now - savedAt > 365 * 24 * 60 * 60 * 1000) {
+      usedRenewalUtrs.delete(utrKey)
+    }
+  }
 }
 
 const sendJson = (res, statusCode, data, extraHeaders = {}) => {
@@ -645,8 +657,8 @@ export const requestHandler = async (req, res) => {
         return sendJson(res, 403, { message: 'Renewal is allowed only for your verified RMP profile.' })
       }
 
-      if (!feeType.includes('renewal')) {
-        return sendJson(res, 400, { message: 'Renewal confirmation is allowed only for Renewal Fee payments.' })
+      if (feeType !== RENEWAL_FEE_LABEL) {
+        return sendJson(res, 400, { message: 'Renewal confirmation is allowed only for 5 Year Renewal Fee payments.' })
       }
 
       if (utrNo.length < 8) {
@@ -657,8 +669,14 @@ export const requestHandler = async (req, res) => {
         return sendJson(res, 400, { message: 'UTR format is invalid.' })
       }
 
-      if (!Number.isFinite(amount) || amount !== 2000) {
-        return sendJson(res, 400, { message: 'Renewal is allowed only when the confirmed amount is exactly INR 2000.' })
+      if (!Number.isFinite(amount) || !Number.isInteger(amount) || amount !== RENEWAL_FEE_AMOUNT) {
+        return sendJson(res, 400, { message: `Renewal is allowed only when the confirmed amount is exactly INR ${RENEWAL_FEE_AMOUNT}.` })
+      }
+
+      cleanupUsedRenewalUtrs()
+      const utrKey = utrNo.toUpperCase()
+      if (usedRenewalUtrs.has(utrKey)) {
+        return sendJson(res, 409, { message: 'This UTR has already been used for a renewal request.' })
       }
 
       const doctors = await getDoctors()
@@ -680,6 +698,7 @@ export const requestHandler = async (req, res) => {
 
       const sortedDoctors = sortDoctorsByName(doctors)
       await setDoctors(sortedDoctors)
+      usedRenewalUtrs.set(utrKey, nowMs())
 
       return sendJson(res, 200, {
         success: true,
