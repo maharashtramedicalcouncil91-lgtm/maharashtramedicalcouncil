@@ -28,6 +28,7 @@ const OTP_MAX_VERIFY_ATTEMPTS = 3
 const OTP_LOCKOUT_MINUTES = 5
 const RENEWAL_FEE_AMOUNT = 25000
 const RENEWAL_FEE_LABEL = '5 year renewal fee'
+const RENEWAL_VALIDITY_YEARS = 5
 const ADMIN_LOGIN_WINDOW_MS = 10 * 60 * 1000
 const ADMIN_LOGIN_MAX_ATTEMPTS = 12
 const OTP_DEBUG = process.env.OTP_DEBUG === 'true' && process.env.NODE_ENV !== 'production'
@@ -100,12 +101,12 @@ const formatDateIso = (date) => {
   const day = String(date.getUTCDate()).padStart(2, '0')
   return `${year}-${month}-${day}`
 }
-const nextYearSameDate = (now = new Date()) => {
+const addYearsSameDate = (yearsToAdd, now = new Date()) => {
   const year = now.getUTCFullYear()
   const month = now.getUTCMonth()
   const day = now.getUTCDate()
 
-  const targetYear = year + 1
+  const targetYear = year + yearsToAdd
   const maxDayInTargetMonth = new Date(Date.UTC(targetYear, month + 1, 0)).getUTCDate()
   const targetDay = Math.min(day, maxDayInTargetMonth)
   return new Date(Date.UTC(targetYear, month, targetDay))
@@ -690,7 +691,7 @@ export const requestHandler = async (req, res) => {
         return sendJson(res, 404, { message: 'Doctor not found for the provided registration ID and email.' })
       }
 
-      const renewedValidUpto = formatDateIso(nextYearSameDate(new Date()))
+      const renewedValidUpto = formatDateIso(addYearsSameDate(RENEWAL_VALIDITY_YEARS, new Date()))
       doctors[index] = {
         ...doctors[index],
         validUpto: renewedValidUpto,
