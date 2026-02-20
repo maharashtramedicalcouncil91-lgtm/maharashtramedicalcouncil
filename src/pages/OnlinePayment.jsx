@@ -1,19 +1,14 @@
 import { useMemo, useState } from 'react'
 import { CreditCard, Printer, ShieldCheck, IndianRupee, QrCode, Smartphone } from 'lucide-react'
 import { useSiteContent } from '../context/siteContentStore'
-import { confirmRenewalPayment } from '../services/apiClient'
+import { checkRenewalEligibility, confirmRenewalPayment } from '../services/apiClient'
 
 const RECEIPT_STORAGE_KEY = 'mmc_payment_receipt_latest'
 const DOCTOR_SESSION_KEY = 'mmc_verified_doctor'
 const DEFAULT_UPI_PAYEE_NAME = 'Maharashtra Medical Council'
 const DEFAULT_UPI_ID = 'mmconline@oksbi'
 
-const feeOptions = [
-  { key: 'registration', label: 'Registration Fee', amount: 1500 },
-  { key: 'renewal', label: 'Renewal Fee', amount: 2000 },
-  { key: 'additional', label: 'Additional Qualification Fee', amount: 2500 },
-  { key: 'verification', label: 'Verification Fee', amount: 1000 },
-]
+const renewalFee = { key: 'renewal', label: 'Renewal Fee', amount: 2000 }
 
 const formatCurrency = (value) =>
   new Intl.NumberFormat('en-IN', {
@@ -59,7 +54,6 @@ const OnlinePayment = () => {
   const { siteContent } = useSiteContent()
   const [registrationId, setRegistrationId] = useState('')
   const [email, setEmail] = useState('')
-  const [selectedFee, setSelectedFee] = useState(feeOptions[0].key)
   const [acceptedTerms, setAcceptedTerms] = useState(false)
   const [status, setStatus] = useState({ type: '', message: '' })
   const [receipt, setReceipt] = useState(() => {
@@ -78,7 +72,7 @@ const OnlinePayment = () => {
   const configuredPayeeName = (siteContent.paymentSettings?.payeeName || DEFAULT_UPI_PAYEE_NAME).trim()
   const hasValidPaymentConfig = isValidUpiId(configuredUpiId) && Boolean(configuredPayeeName)
 
-  const fee = useMemo(() => feeOptions.find((item) => item.key === selectedFee) || feeOptions[0], [selectedFee])
+  const fee = renewalFee
 
   const canProceed = acceptedTerms && registrationId.trim() && email.trim()
 
@@ -130,13 +124,28 @@ const OnlinePayment = () => {
     })
   }, [configuredPayeeName, configuredUpiId, receipt])
 
-  const handlePayNow = () => {
+  const handlePayNow = async () => {
     if (!canProceed) {
       setStatus({ type: 'error', message: 'Please complete details and accept terms before proceeding.' })
       return
     }
     if (!hasValidPaymentConfig) {
       setStatus({ type: 'error', message: 'Payment is temporarily unavailable. UPI settings are not configured by admin.' })
+      return
+    }
+
+    try {
+      const eligibility = await checkRenewalEligibility({
+        registrationId: registrationId.trim(),
+        email: email.trim(),
+      })
+
+      if (!eligibility?.eligible) {
+        setStatus({ type: 'error', message: 'Only existing RMP card holders can renew. Please verify your details.' })
+        return
+      }
+    } catch (error) {
+      setStatus({ type: 'error', message: error.message || 'Unable to verify renewal eligibility.' })
       return
     }
 
@@ -319,12 +328,15 @@ const OnlinePayment = () => {
 
           <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <article className="rounded-lg border border-[#E6E2D8] bg-[#FCFAF4] p-5 sm:p-6">
-              <h3 className="text-lg font-semibold text-[#2E2A21]">Payment Details</h3>
+              <h3 className="text-lg font-semibold text-[#2E2A21]">Renewal Payment Details</h3>
               {!hasValidPaymentConfig && (
                 <div className="mt-3 rounded-md border border-[#A94D4D] bg-[#FFF3F3] px-3 py-2 text-xs text-[#7A2C2C] sm:text-sm">
                   Payment is temporarily unavailable. Admin must configure UPI ID in dashboard.
                 </div>
               )}
+              <div className="mt-3 rounded-md border border-[#E6E2D8] bg-[#FFFDF7] p-3 text-xs text-[#5C5543] sm:text-sm">
+                Renewal is available only for existing RMP cards. Enter the exact registration ID and registered email.
+              </div>
               <div className="mt-4 grid gap-3">
                 <input
                   type="text"
@@ -340,17 +352,9 @@ const OnlinePayment = () => {
                   placeholder="Registered Email"
                   className="rounded-md border border-[#D8D0BF] px-3 py-2.5 text-sm outline-none focus:border-[#886718] sm:text-base"
                 />
-                <select
-                  value={selectedFee}
-                  onChange={(event) => setSelectedFee(event.target.value)}
-                  className="rounded-md border border-[#D8D0BF] bg-white px-3 py-2.5 text-sm outline-none focus:border-[#886718] sm:text-base"
-                >
-                  {feeOptions.map((option) => (
-                    <option key={option.key} value={option.key}>
-                      {option.label} - {formatCurrency(option.amount)}
-                    </option>
-                  ))}
-                </select>
+                <div className="rounded-md border border-[#D8D0BF] bg-white px-3 py-2.5 text-sm text-[#2E2A21] sm:text-base">
+                  {fee.label} - {formatCurrency(fee.amount)}
+                </div>
 
                 <label className="mt-1 inline-flex items-start gap-2 text-sm text-[#2E2A21] sm:text-base">
                   <input

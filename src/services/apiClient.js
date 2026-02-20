@@ -81,6 +81,12 @@ export const verifyRmpOtp = ({ registrationId, email, otp }) =>
     body: JSON.stringify({ registrationId, email, otp }),
   })
 
+export const checkRenewalEligibility = ({ registrationId, email }) =>
+  apiRequest('/rmp/renewal/eligibility', {
+    method: 'POST',
+    body: JSON.stringify({ registrationId, email }),
+  })
+
 export const confirmRenewalPayment = ({ registrationId, email, feeType, utrNo }) =>
   apiRequest('/rmp/renewal/confirm', {
     method: 'POST',

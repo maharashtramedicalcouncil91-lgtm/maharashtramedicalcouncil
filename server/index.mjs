@@ -537,6 +537,35 @@ export const requestHandler = async (req, res) => {
       })
     }
 
+    if (req.method === 'POST' && url.pathname === '/api/rmp/renewal/eligibility') {
+      const body = await parseBody(req)
+      const registrationId = String(body.registrationId || '').trim()
+      const email = String(body.email || '').trim().toLowerCase()
+
+      if (!registrationId || !email) {
+        return sendJson(res, 400, { message: 'registrationId and email are required.' })
+      }
+
+      const doctors = await getDoctors()
+      const doctor = doctors.find(
+        (item) =>
+          normalizeRegId(item.registrationId) === normalizeRegId(registrationId) &&
+          normalize(item.email) === normalize(email),
+      )
+
+      if (!doctor) {
+        return sendJson(res, 404, {
+          eligible: false,
+          message: 'No existing RMP card found for the provided registration ID and email.',
+        })
+      }
+
+      return sendJson(res, 200, {
+        eligible: true,
+        doctor: iconDoctor(doctor),
+      })
+    }
+
     if (req.method === 'POST' && url.pathname === '/api/rmp/renewal/confirm') {
       const body = await parseBody(req)
       const registrationId = String(body.registrationId || '').trim()
