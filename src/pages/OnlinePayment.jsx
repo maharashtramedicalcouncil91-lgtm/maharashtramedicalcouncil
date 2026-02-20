@@ -181,6 +181,11 @@ const OnlinePayment = () => {
       return
     }
 
+    if (Number(receipt.amount) !== 2000) {
+      setStatus({ type: 'error', message: 'Renewal can be confirmed only for INR 2000 payment.' })
+      return
+    }
+
     const updated = {
       ...receipt,
       status: 'Paid (User Confirmed)',
@@ -196,6 +201,7 @@ const OnlinePayment = () => {
           email: updated.email,
           feeType: updated.feeType,
           utrNo: cleanedUtr,
+          amount: updated.amount,
         })
 
         try {

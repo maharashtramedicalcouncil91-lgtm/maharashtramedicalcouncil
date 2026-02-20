@@ -19,12 +19,15 @@ const AUTH_TOKEN_SECRET = process.env.AUTH_TOKEN_SECRET || 'change-this-secret'
 const ADMIN_SIGNUP_KEY_HASH = process.env.ADMIN_SIGNUP_KEY_HASH || ''
 const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || ''
 const SESSION_COOKIE_NAME = 'mmc_admin_session'
+const RMP_SESSION_COOKIE_NAME = 'mmc_rmp_session'
 
 const OTP_LENGTH = 6
 const OTP_EXPIRY_SECONDS = 120
 const OTP_COOLDOWN_SECONDS = 30
 const OTP_MAX_VERIFY_ATTEMPTS = 3
 const OTP_LOCKOUT_MINUTES = 5
+const ADMIN_LOGIN_WINDOW_MS = 10 * 60 * 1000
+const ADMIN_LOGIN_MAX_ATTEMPTS = 12
 const OTP_DEBUG = process.env.OTP_DEBUG === 'true' && process.env.NODE_ENV !== 'production'
 
 const otpStore = new Map()
@@ -50,6 +53,8 @@ const iconDoctor = (doctor) => ({
 
 const normalize = (value) => String(value || '').trim().toLowerCase()
 const normalizeRegId = (value) => String(value || '').trim().toUpperCase()
+const isValidRegistrationId = (value) => /^[A-Za-z0-9/-]{6,20}$/.test(String(value || '').trim())
+const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim())
 const sortDoctorsByName = (doctors) =>
   [...doctors].sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), undefined, { sensitivity: 'base' }))
 const parseIsoDate = (value) => {
@@ -211,12 +216,31 @@ const getAdminPayload = (req) => {
   return payload
 }
 
+const getRmpPayload = (req) => {
+  const cookies = parseCookies(req.headers.cookie)
+  const token = cookies[RMP_SESSION_COOKIE_NAME]
+  if (!token) {
+    return null
+  }
+
+  const payload = verifyToken(token, AUTH_TOKEN_SECRET)
+  if (!payload || payload.sub !== 'rmp') {
+    return null
+  }
+
+  return payload
+}
+
 const makeSessionCookie = (token) => {
   const secure = process.env.NODE_ENV === 'production' ? '; Secure' : ''
   return `${SESSION_COOKIE_NAME}=${encodeURIComponent(token)}; HttpOnly; Path=/; SameSite=Lax; Max-Age=43200${secure}`
 }
 
 const clearSessionCookie = () => `${SESSION_COOKIE_NAME}=; HttpOnly; Path=/; SameSite=Lax; Max-Age=0`
+const makeRmpSessionCookie = (token) => {
+  const secure = process.env.NODE_ENV === 'production' ? '; Secure' : ''
+  return `${RMP_SESSION_COOKIE_NAME}=${encodeURIComponent(token)}; HttpOnly; Path=/; SameSite=Lax; Max-Age=1800${secure}`
+}
 
 const generateOtp = () => randomInt(10 ** (OTP_LENGTH - 1), 10 ** OTP_LENGTH).toString()
 
@@ -262,6 +286,14 @@ export const requestHandler = async (req, res) => {
       const config = verifyAdminConfig()
       if (!config.ok) {
         return sendJson(res, 500, { message: config.message })
+      }
+
+      const requestIp = getClientIp(req)
+      const loginLimit = checkRateLimit(`admin:login:${requestIp}`, ADMIN_LOGIN_MAX_ATTEMPTS, ADMIN_LOGIN_WINDOW_MS)
+      if (!loginLimit.allowed) {
+        return sendJson(res, 429, {
+          message: `Too many admin login attempts. Try again in ${loginLimit.retryAfter}s.`,
+        })
       }
 
       const body = await parseBody(req)
@@ -387,6 +419,10 @@ export const requestHandler = async (req, res) => {
         return sendJson(res, 400, { message: 'registrationId and email are required.' })
       }
 
+      if (!isValidRegistrationId(registrationId) || !isValidEmail(email)) {
+        return sendJson(res, 400, { message: 'registrationId or email format is invalid.' })
+      }
+
       const doctors = await getDoctors()
       const doctor = doctors.find(
         (item) => normalizeRegId(item.registrationId) === normalizeRegId(registrationId) && normalize(item.email) === normalize(email),
@@ -479,6 +515,10 @@ export const requestHandler = async (req, res) => {
         return sendJson(res, 400, { message: 'registrationId, email and otp are required.' })
       }
 
+      if (!isValidRegistrationId(registrationId) || !isValidEmail(email)) {
+        return sendJson(res, 400, { message: 'registrationId or email format is invalid.' })
+      }
+
       const doctors = await getDoctors()
       const doctor = doctors.find(
         (item) => normalizeRegId(item.registrationId) === normalizeRegId(registrationId) && normalize(item.email) === normalize(email),
@@ -531,19 +571,37 @@ export const requestHandler = async (req, res) => {
       }
 
       otpStore.delete(key)
+      const rmpToken = signToken(
+        {
+          sub: 'rmp',
+          registrationId: normalizeRegId(doctor.registrationId),
+          email: normalize(doctor.email),
+        },
+        AUTH_TOKEN_SECRET,
+        60 * 30,
+      )
       return sendJson(res, 200, {
         success: true,
         doctor: iconDoctor(doctor),
-      })
+      }, { 'Set-Cookie': makeRmpSessionCookie(rmpToken) })
     }
 
     if (req.method === 'POST' && url.pathname === '/api/rmp/renewal/eligibility') {
+      const payload = getRmpPayload(req)
+      if (!payload) {
+        return sendJson(res, 401, { message: 'Please complete RMP OTP login before renewal.' })
+      }
+
       const body = await parseBody(req)
       const registrationId = String(body.registrationId || '').trim()
       const email = String(body.email || '').trim().toLowerCase()
 
       if (!registrationId || !email) {
         return sendJson(res, 400, { message: 'registrationId and email are required.' })
+      }
+
+      if (normalizeRegId(registrationId) !== payload.registrationId || normalize(email) !== payload.email) {
+        return sendJson(res, 403, { message: 'Renewal is allowed only for your verified RMP profile.' })
       }
 
       const doctors = await getDoctors()
@@ -567,14 +625,24 @@ export const requestHandler = async (req, res) => {
     }
 
     if (req.method === 'POST' && url.pathname === '/api/rmp/renewal/confirm') {
+      const payload = getRmpPayload(req)
+      if (!payload) {
+        return sendJson(res, 401, { message: 'Please complete RMP OTP login before renewal.' })
+      }
+
       const body = await parseBody(req)
       const registrationId = String(body.registrationId || '').trim()
       const email = String(body.email || '').trim().toLowerCase()
       const feeType = String(body.feeType || '').trim().toLowerCase()
       const utrNo = String(body.utrNo || '').trim()
+      const amount = Number(body.amount)
 
       if (!registrationId || !email || !feeType) {
         return sendJson(res, 400, { message: 'registrationId, email and feeType are required.' })
+      }
+
+      if (normalizeRegId(registrationId) !== payload.registrationId || normalize(email) !== payload.email) {
+        return sendJson(res, 403, { message: 'Renewal is allowed only for your verified RMP profile.' })
       }
 
       if (!feeType.includes('renewal')) {
@@ -583,6 +651,14 @@ export const requestHandler = async (req, res) => {
 
       if (utrNo.length < 8) {
         return sendJson(res, 400, { message: 'Valid UTR number is required for renewal confirmation.' })
+      }
+
+      if (!/^[A-Za-z0-9-]{8,40}$/.test(utrNo)) {
+        return sendJson(res, 400, { message: 'UTR format is invalid.' })
+      }
+
+      if (!Number.isFinite(amount) || amount !== 2000) {
+        return sendJson(res, 400, { message: 'Renewal is allowed only when the confirmed amount is exactly INR 2000.' })
       }
 
       const doctors = await getDoctors()
